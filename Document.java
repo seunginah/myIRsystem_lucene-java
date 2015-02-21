@@ -1,9 +1,3 @@
-// Grace Seungin Yoo
-// CS336 Intelligent IR, SP'15
-// Assn1
-
-package assignment1;
-
 
 import java.util.ArrayList;
 
@@ -13,10 +7,13 @@ import java.util.ArrayList;
  * 
  * @author dkauchak
  */
-public class Document{
+public class Document
+{
+	// Approximate maximum line length when calling toString for printing document text
+	private static final int LINE_LENGTH = 50;
+	
 	private int docID;
 	private ArrayList<String> text;
-	private Dictionary words;
 	
 	/**
 	 * Create a new document
@@ -27,7 +24,6 @@ public class Document{
 	public Document(int docID, ArrayList<String> text){
 		this.docID = docID;
 		this.text = text;
-		this.words = new Dictionary();
 	}
 
 	
@@ -50,7 +46,7 @@ public class Document{
 	}
 
 	/**
-	 * Get the text (i.e. words) that make up this document. (all tokens)
+	 * Get the text (i.e. words) that make up this document.
 	 * 
 	 * @return
 	 */
@@ -67,26 +63,33 @@ public class Document{
 		this.text = text;
 	}
 	
-	/**
-	 * Populate the dictionary from the test ArrayList
-	 * 
-	 */
-	public void setDict(){
-		// if the array list text isn't empty, use it to populate the dictionary
-		if (!text.isEmpty()){
-			//
-			for(int i = 0; i<text.size(); i++){
-				this.words.addWord(text.get(i));
+	public String toString(){
+		StringBuffer returnMe = new StringBuffer();
+		
+		for( int i = 0; i < LINE_LENGTH; i++ ){
+			returnMe.append("-");
+		}
+		
+		returnMe.append("\nDocID: ");
+		returnMe.append(docID);
+		returnMe.append("\n");
+		
+		int line_char_count = 0;
+		
+		for( String s: text ){
+			returnMe.append(s);
+		
+			line_char_count += s.length();
+			
+			if( line_char_count >= LINE_LENGTH ){
+				returnMe.append("\n");
+				line_char_count = 0;
+			}else{
+				returnMe.append(" ");
+				line_char_count++;
 			}
 		}
-	}
-	
-	/**
-	 * Get the dictionary of words (all types)
-	 * 
-	 * @return
-	 */
-	public Dictionary getDict(){
-		return words;
+		
+		return returnMe.toString();
 	}
 }

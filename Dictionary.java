@@ -2,7 +2,7 @@
 // CS336 Intelligent IR, SP'15
 // Assn1
 
-package assignment1;
+
 
 // java util
 import java.util.ArrayList;

@@ -1,13 +1,8 @@
-// Grace Seungin Yoo
-// CS336 Intelligent IR, SP'15
-// Assn1
 
-package assignment1;
-
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.HashSet;
+
+import java.io.*;
 
 /**
  * A class for performing various data normalization techniques
@@ -17,21 +12,11 @@ import java.util.Scanner;
  *
  */
 public class TokenProcessor{
-	
-	private boolean lower;
-	private boolean stem;
-	private boolean num;
-	private ArrayList<String> stops;
-	
-	/**
-	 * 
-	 */
-	public TokenProcessor(){
-		this.lower = false;
-		this.stem = false;
-		this.num = false;
-		this.stops = new ArrayList<String>();
-	}
+	private boolean lowercase = false;
+	private boolean stem = false;
+	private boolean foldNumbers = false;
+	private HashSet<String> stoplist = null; 
+	private Porter stemmer = null;
 	
 	/**
 	 * Set whether or not to lowercase the tokens.
@@ -39,7 +24,7 @@ public class TokenProcessor{
 	 * @param b
 	 */
 	public void setLowercase(boolean b){
-		this.lower = b;
+		lowercase = b;
 	}
 	
 	/**
@@ -47,20 +32,20 @@ public class TokenProcessor{
 	 * @param b
 	 */
 	public void setStem(boolean b){
-		this.stem = b;
+		stem = b;
+		
+		if( stemmer == null ){
+			stemmer = new Porter();
+		}
 	}
-
+	
 	/**
 	 * Set whether to replace numbers with <NUM> when processing
 	 * 
 	 * @param b
 	 */
 	public void setFoldNumbers(boolean b){
-		this.num = b;
-	}
-	
-	public ArrayList<String> getStoplist(){
-		return stops;
+		foldNumbers = b;
 	}
 	
 	/**
@@ -70,28 +55,37 @@ public class TokenProcessor{
 	 * @param list The list of stop words
 	 */
 	public void setStopList(ArrayList<String> list){
-		this.stops = list;
-		//System.out.println("just set: "+list.size());
+		stoplist = new HashSet<String>(list.size());
+		
+		for( String word: list ){
+			stoplist.add(word);
+		}
 	}
 	
-	public ArrayList<String> importStopList() throws FileNotFoundException{
-		//ArrayList<String> stoplist = new ArrayList<String>();
-		this.stops = new ArrayList<String>();
-		// use a scanner to read the document, using a whitespace delimiter
-		Scanner read = new Scanner (new File("stoplist.txt"));
-		read.useDelimiter(" ");
-
-		// add all lines of textfile to stop list
-		while (read.hasNext())
-		{
-			String line = read.nextLine();
-			this.stops.add(line);
+	/**
+	 * Set the list of words to use as a stoplist.  If the setStopList method is
+	 * not called, then don't do any stoplisting.
+	 * 
+	 * @param filename a file containing the list of stop words
+	 */
+	public void setStopList(String filename){
+		stoplist = new HashSet<String>();
+		
+		try{
+			BufferedReader in = new BufferedReader(new FileReader(filename));
+			
+			String line = in.readLine();
+			
+			while( line != null ){
+				stoplist.add(line);
+				
+				line = in.readLine();
+			}
+		}catch(IOException e){
+			throw new RuntimeException("Problems processing stoplist file: " + filename + "\n" + e.toString());
 		}
-		read.close();
-		System.out.println(stops.size());
-		return stops;
 	}
-
+	
 	/**
 	 * Go through the strings in "tokens", apply all normalization techniques
 	 * that are enabled and return the new set of tokens.
@@ -100,56 +94,29 @@ public class TokenProcessor{
 	 * @return The normalized tokens
 	 */
 	public ArrayList<String> process(ArrayList<String> tokens){
-		ArrayList<String> processed = tokens;
-		//System.out.println(tokens.toString());
+		ArrayList<String> processed_tokens = new ArrayList<String>();
 		
-		// if the stop list isn't empty
-		if (this.stops ==null){
-		}
-		else{
-			if (!(this.stops.size()==0)){
-			System.out.println("stoplist size: "+stops.size()+" tokenslist size: "+processed.size());
-			
-			for(int i =0; i<processed.size(); i++){
-				if(stops.contains(processed.get(i))){
-					processed.remove(i);
+		for( String token: tokens ){
+			if( stoplist == null ||
+				!stoplist.contains(token.toLowerCase()) )
+			{
+				if( lowercase ){
+					token = token.toLowerCase();
 				}
-			}}
-			else{
-				System.out.println(stops.isEmpty());
-			}
-		}
-		
-		// if lowercasing
-		if(lower){
-			for(int i =0; i<tokens.size(); i++){
-				processed.get(i).toLowerCase();
-			}
-		}
-		
-		// if stemming
-		if(stem){
-			Porter porter = new Porter();
-			ArrayList<String> stemmed = new ArrayList<String>();
-			// for each word in the array list, stem it and save it in the new array list
-			for(int i =0; i<processed.size(); i++){
-				stemmed.add(porter.stem(processed.get(i)));
-			}
-			// clear processed
-			processed.clear();
-			// set processed to the stemmed
-			processed = stemmed;
-		}
-		
-		// if number folding
-		// please note that this doesn't recognize a number with a + in front of it
-		if(num){
-			// define a regex for number matching
-			for(int i =0; i<processed.size(); i++){
-				processed.get(i).replaceAll("(-*)?[0-9]+(.[0-9]*)?(,[0-9]*)?", "<NUM>");
-			}
 			
-		}		
-		return processed;
+				if( stem ){
+					token = stemmer.stem(token);
+				}
+				
+				if( foldNumbers &&
+					token.matches("^[+-]?(\\d+[.,]?)*\\d$") ){
+					token = "<NUM>";
+				}
+				
+				processed_tokens.add(token);
+			}
+		}
+		
+		return processed_tokens;
 	}
 }

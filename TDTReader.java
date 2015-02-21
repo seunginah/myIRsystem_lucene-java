@@ -1,16 +1,8 @@
-// Grace Seungin Yoo
-// CS336 Intelligent IR, SP'15
-// Assn1
 
-package assignment1;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.util.NoSuchElementException;
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.Scanner;
-
 
 /**
  * A document reader for the TDT corpus.
@@ -20,154 +12,120 @@ import java.util.Scanner;
  */
 public class TDTReader implements DocumentReader{
 
-	// save the documents in a queue
-	private Queue<Document> docQ;
-	// select a tokenizer
-	private Tokenizer thisTokenizer;
-	private TokenProcessor thisProcessor;
-	private ArrayList<String> tokens;
+	private Tokenizer tokenizer = null;
+	private TokenProcessor tokenProcessor = null;
+	private BufferedReader in;
+	private String nextDocText;
+	private int nextDocID = 0;
+	
 	/**
 	 * The text file containing the TDT data with documents delimited
 	 * by <DOC> ... </DOC>
 	 * 
-	 * the constructor parses the text file, creates a Document for each document found
-	 * after a Document is instantiated, a Dictionary can be constructed if the Document.setDict() method is called
-	 * 
 	 * @param documentFile
-	 * @throws IOException 
 	 */
-	public TDTReader(String documentFile, Tokenizer tokenizer) throws IOException{
-		// set tokenizer
-		setTokenizer(tokenizer);
-
-		// instantiate instance fields
-		setDocQ(new LinkedList<Document>()); // save documents in a linked list
-		String docText = ""; // save the text (to be tokenized) in this string
-		String docIDStr = "";// while reading, store the current docID until the doc is ready to be written
-
-		// use a scanner to read the document, using a whitespace delimiter
-		Scanner read = new Scanner (new File(documentFile));
-		read.useDelimiter(" ");
-		// only collect string info when this boolean is true
-		boolean startDocRead = false;
-
-		while (read.hasNext())
-		{
-			// let's read the line
-			String line = read.nextLine();
-
-			// this series of if statements should work if the txt file is in a good format
-			// for ex., if </TEXT> occurred before the first instance of <TEXT>, the docID#s would be shifted 
-
-			// get the doc ID if it is seen
-			if (line.contains("<DOCNO>")){
-				// split this line with whitespace to get the docID#
-				String[] newDocNum = line.split(" ");
-				// save the second index
-				docIDStr = newDocNum[1];
-			}
-			// "turn on" saving strings once the <TEXT> indicator is seen
-			else if(line.contains("<TEXT>")){
-				startDocRead = true;
-			}
-			// if we're done reading this Document's text
-			else if (line.contains("</TEXT>")){
-				// convert the text id to an int id 
-				// first get rid of the characters. also get rid of the first 3 numbers
-				// (i found that all docIDs begin with "890" so let's ignore that)
-				String currentdocID = docIDStr.replaceAll("[^0-9]", "").substring(3);
-				int docID = Integer.parseInt(currentdocID);
-
-				// now add the new document into the document Queue with the docID# and the arraylist of tokens
-				this.setTokens(thisTokenizer.tokenize(docText));
-				getDocQ().add(new Document(docID, getTokens()));
-
-				// turn off saving lines for document text momentarily
-				startDocRead = false;
-			}
-			// if we aren't saving a new docID# or terminating a document,
-			else{
-				// just keep adding lines to the Document
-				if (startDocRead){
-					docText = docText + line;
-				}
-			}
+	public TDTReader(String documentFile){
+		try{
+			in = new BufferedReader(new FileReader(documentFile));
+			nextDocText = readNextDocText();
+		}catch(IOException e){
+			throw new RuntimeException("Problems opening file: " + documentFile + "\n" + e.toString());
 		}
-		read.close(); // close the reader
 	}
-
+	
 	/**
 	 * Set the tokenizer for this reader
 	 * 
 	 * @param tokenizer
 	 */
 	public void setTokenizer(Tokenizer tokenizer) {
-		this.thisTokenizer = tokenizer;		
+		this.tokenizer = tokenizer;
 	}
-
+	
 	/**
 	 * set the token processor for this reader
 	 * 
 	 * @param tokenProcessor
 	 */
 	public void setTokenProcessor(TokenProcessor tokenProcessor) {
-		this.setThisProcessor(tokenProcessor);
+		this.tokenProcessor = tokenProcessor;
 	}
 
 	/**
 	 * Are there more documents to be read?
 	 */
 	public boolean hasNext() {
-		// if the document queue isn't empty, there are more documents 
-		if(getDocQ().isEmpty()){
-			return false;
-		}
-		else{
-			return true;
-		}
+		return nextDocText != null;
 	}
 
 	/**
 	 * Get the next document.
 	 */
 	public Document next(){
-		// if there are documents in the queue
-		if (hasNext()){
-			// return the next one, removing from queue
-			return this.getDocQ().remove();
+		if( !hasNext() ){
+			throw new NoSuchElementException();
 		}
-		else{
+		
+		if( tokenizer == null ){
+			throw new RuntimeException("TDTReader::next() - call without setting tokenizer");
+		}
+		
+		ArrayList<String> tokens = tokenizer.tokenize(nextDocText);
+		
+		if( tokenProcessor != null ){
+			tokens = tokenProcessor.process(tokens);
+		}
+		
+		Document returnMe = new Document(nextDocID, tokens);
+		nextDocID++;
+		
+		try{
+			nextDocText = readNextDocText();
+		}catch(IOException e){
+			throw new RuntimeException("Problems reading file\n" + e.toString());
+		}
+		
+		return returnMe;
+	}
+
+	/**
+	 * Read through the file and extract the text between the next <DOC> and </DOC> tags
+	 * @return The text between the next DOC tags or null if no more documents exist
+	 * @throws IOException
+	 */
+	private String readNextDocText() throws IOException{
+		String line = in.readLine();
+		System.out.println(line);
+		
+		// find the beginning of the document
+		while( line != null &&
+			   !line.equals("<DOC>") ){
+			line = in.readLine();
+			System.out.println("line not null "+line);
+		}
+		
+		if( line == null ){
+			System.out.println("line is null");
 			return null;
+		}else{
+			StringBuffer buffer = new StringBuffer();
+		
+			line = in.readLine();
+			
+			// grab all the text between <DOC> and </DOC>
+			while( line != null &&
+				   !line.equals("<\\DOC>") ){
+				buffer.append(" " + line);
+				line = in.readLine();
+				System.out.println("line not null 2: "+line);
+			}
+		
+			return buffer.toString();
 		}
 	}
-
+	
 	public void remove() {
-		// method is optional, so don't worry about it
+		// method is optional
 	}
-
-	public Queue<Document> getDocQ() {
-		return docQ;
-	}
-
-	public void setDocQ(Queue<Document> docQ) {
-		this.docQ = docQ;
-	}
-
-	public TokenProcessor getThisProcessor() {
-		return thisProcessor;
-	}
-
-	public void setThisProcessor(TokenProcessor thisProcessor) {
-		this.thisProcessor = thisProcessor;
-	}
-
-	public ArrayList<String> getTokens() {
-		return tokens;
-	}
-
-	public void setTokens(ArrayList<String> tokens) {
-		this.tokens = tokens;
-	}
-
 
 }

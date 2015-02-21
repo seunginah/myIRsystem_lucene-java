@@ -1,4 +1,3 @@
-package assignment1;
 
 
 /*
@@ -66,7 +65,6 @@ class Porter{
 	 * Add a character to the word being stemmed.  When you are finished
 	 * adding characters, you can call stem(void) to stem the word.
 	 */
-	@SuppressWarnings("unused")
 	private void add(char ch){
 		if (i == b.length){
 			char[] new_b = new char[i+INC];
@@ -106,7 +104,6 @@ class Porter{
 	/**
 	 * Returns the length of the word resulting from the stemming process.
 	 */
-	@SuppressWarnings("unused")
 	private int getResultLength() {
 		return i_end;
 	}
@@ -116,7 +113,6 @@ class Porter{
 	 * the stemming process.  You also need to consult getResultLength()
 	 * to determine the length of the result.
 	 */
-	@SuppressWarnings("unused")
 	private char[] getResultBuffer() {
 		return b;
 	}
