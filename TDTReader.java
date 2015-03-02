@@ -1,8 +1,11 @@
 
 
 import java.io.*;
+import java.util.LinkedList;
 import java.util.NoSuchElementException;
 import java.util.ArrayList;
+import java.util.Queue;
+
 
 /**
  * A document reader for the TDT corpus.
@@ -17,6 +20,8 @@ public class TDTReader implements DocumentReader{
 	private BufferedReader in;
 	private String nextDocText;
 	private int nextDocID = 0;
+	private Queue<Document> docQ; // queue for doucments
+	private String thisFile;
 	
 	/**
 	 * The text file containing the TDT data with documents delimited
@@ -25,12 +30,42 @@ public class TDTReader implements DocumentReader{
 	 * @param documentFile
 	 */
 	public TDTReader(String documentFile){
+		docQ = new LinkedList<Document>(); // save documents in a linked list
+		this.thisFile = documentFile;
+	}
+	
+	/**
+	 * this method reads through all the documents found in the documentFile
+	 * it will populate a document queue, which stores all the documents
+	 * 
+	 */
+	public void read(){
 		try{
-			in = new BufferedReader(new FileReader(documentFile));
+			in = new BufferedReader(new FileReader(thisFile));
 			nextDocText = readNextDocText();
+			nextDocID ++;
+			Document doc1 = new Document(nextDocID, tokenizer.tokenize(nextDocText));
+			
+			// while there are more documents, read them and put them into a queue
+			while(hasNext()){
+				Document doc = next();
+				int docID = doc.getDocID();
+				docQ.add(doc);
+
+				nextDocText = readNextDocText();
+			}
+			
 		}catch(IOException e){
-			throw new RuntimeException("Problems opening file: " + documentFile + "\n" + e.toString());
+			throw new RuntimeException("Problems opening file: " + thisFile + "\n" + e.toString());
 		}
+	}
+	
+	/**
+	 * returns the queued documents
+	 * @return
+	 */
+	public Queue<Document> getDocQueue(){
+		return docQ;
 	}
 	
 	/**
@@ -79,11 +114,11 @@ public class TDTReader implements DocumentReader{
 		Document returnMe = new Document(nextDocID, tokens);
 		nextDocID++;
 		
-		try{
+/*		try{
 			nextDocText = readNextDocText();
 		}catch(IOException e){
 			throw new RuntimeException("Problems reading file\n" + e.toString());
-		}
+		}*/
 		
 		return returnMe;
 	}
@@ -95,17 +130,16 @@ public class TDTReader implements DocumentReader{
 	 */
 	private String readNextDocText() throws IOException{
 		String line = in.readLine();
-		System.out.println(line);
 		
 		// find the beginning of the document
 		while( line != null &&
-			   !line.equals("<DOC>") ){
+			   !line.equals("<TEXT>") ){
 			line = in.readLine();
-			System.out.println("line not null "+line);
+			//System.out.println("line not null "+line);
 		}
 		
 		if( line == null ){
-			System.out.println("line is null");
+			//System.out.println("line is null");
 			return null;
 		}else{
 			StringBuffer buffer = new StringBuffer();
@@ -114,10 +148,21 @@ public class TDTReader implements DocumentReader{
 			
 			// grab all the text between <DOC> and </DOC>
 			while( line != null &&
-				   !line.equals("<\\DOC>") ){
+				   !line.contains("</DOC>") ){
+				// get the doc ID if it is seen
+				if (line.contains("<DOCNO>")){
+					// split this line with whitespace to get the docID#
+					String[] newDocNum = line.split(" ");
+					// save the second index
+					String docIDStr = newDocNum[1];
+					//System.out.println("docID: "+docIDStr);
+				}
+				else{
+				
 				buffer.append(" " + line);
 				line = in.readLine();
-				System.out.println("line not null 2: "+line);
+				//System.out.println("line not null 2: "+line);
+				}
 			}
 		
 			return buffer.toString();

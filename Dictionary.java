@@ -32,6 +32,9 @@ public class Dictionary{
 		// if the dictionary doesn't contain the word, add it
 		if (!this.dict.contains(word)){
 			this.dict.add(word);
+			// create a postings list for this word
+			PostingsList postings = new PostingsList();
+			//postings.addDoc(docID);
 		}
 		
 	}
